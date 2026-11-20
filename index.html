@@ -1,6 +1,5 @@
 <!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#e8731c"><link rel="manifest" href="manifest.webmanifest"><link rel="icon" href="icon-192.png"><link rel="apple-touch-icon" href="icon-192.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Fin de chantier"><title>Rapport de fin de chantier</title><style>:root{padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
 <style>
-/* Police Inter hébergée localement (fonctionne hors connexion, aucun appel à Google) */
 @font-face{font-family:"Inter";font-style:normal;font-weight:400;font-display:swap;src:url("fonts/inter-latin-400-normal.woff2") format("woff2")}
 @font-face{font-family:"Inter";font-style:normal;font-weight:500;font-display:swap;src:url("fonts/inter-latin-500-normal.woff2") format("woff2")}
 @font-face{font-family:"Inter";font-style:normal;font-weight:600;font-display:swap;src:url("fonts/inter-latin-600-normal.woff2") format("woff2")}
@@ -356,7 +355,7 @@ const CHECKS_BY_TYPE={
 const COMMON_CHECKS=["Travaux réalisés conformément à la commande et aux plans","Chantier nettoyé, déchets et emballages évacués","Notices, garanties et clés remises au client"];
 const RESP=["RENE CUISINES","Magasin","Fabricant","Client","Autre intervenant"];
 const LS_DRAFT="rfc_draft_v1", LS_POSEUR="rfc_poseur_v1", LS_CODE="rfc_code_v1";
-const MAIL_ENDPOINT="";
+const MAIL_ENDPOINT="https://script.google.com/macros/s/AKfycbys9GXXUm1HfjGPEJPO4xx12ru3XibwMF6EUa83IF-iJCPkzByzylL20sopCliOfrgmlw/exec";
 const mailOn=()=>!!MAIL_ENDPOINT&&!inClaudeHost();
 const $=s=>document.querySelector(s), $$=s=>Array.from(document.querySelectorAll(s));
 const today=()=>{const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")};
@@ -709,7 +708,7 @@ function buildPdf(){
         R(8.4,GREY);const cap=clean((i+k+1)+". "+(p.cap||"Photo "+(i+k+1)));doc.text(doc.splitTextToSize(cap,gw)[0],x+(gw-w)/2,y+rowH+4.4)});
       y+=rowH+11}}
 
-  if(DC.length){if(!PHO.length)newPage();else need(80);section("Croquis et documents");
+  if(DC.length){const d0=DC[0],h0=Math.min(175,CW*d0.h/d0.w);if(!PHO.length)newPage();else need(h0+28);section("Croquis et documents");
     DC.forEach((p,i)=>{const maxH=175;let w=CW,h=w*p.h/p.w;if(h>maxH){h=maxH;w=h*p.w/p.h}need(h+10);
       doc.setDrawColor(...LINE);doc.setLineWidth(.2);doc.rect(ML+(CW-w)/2,y,w,h);doc.addImage(p.src,"JPEG",ML+(CW-w)/2,y,w,h,undefined,"FAST");
       R(8.4,GREY);doc.text(doc.splitTextToSize(clean((i+1)+". "+(p.cap||"Document "+(i+1))),CW)[0],ML+(CW-w)/2,y+h+4.4);y+=h+11})}
@@ -787,7 +786,7 @@ function example(){
 }
 function renderAll(){
   $("#sEmail").value=S.f.cEmail||"";if(S.sendMail===undefined)S.sendMail=true;$("#sendMail").checked=!!S.sendMail;
-  $("#numLbl").textContent="N° "+S.num+" · v5";
+  $("#numLbl").textContent="N° "+S.num+" · v6";
   FIELDS.forEach(id=>{const el=document.getElementById(id);el.value=S.f[id]||""});
   $("#accept").checked=!!S.accept;$("#absent").checked=!!S.absent;$("#clientSign").hidden=!!S.absent;
   renderChips($("#types"),TYPES,true,()=>S.types,null,onTypes);onTypes();
