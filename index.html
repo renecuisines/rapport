@@ -138,18 +138,24 @@ footer.bar .btn{flex:1}
 .edtext input{flex:1;min-width:0;font:inherit;font-size:16px;border-radius:10px;border:1px solid #3a4152;background:#14171f;color:#fff;padding:10px}
 .rpacts{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--navy);color:var(--surface);padding:10px 16px;border-radius:999px;font-size:14px;z-index:20;max-width:calc(100% - 32px)}
-.modal{position:fixed;inset:0;z-index:30;background:rgba(10,12,18,.55);display:grid;place-items:center;padding:16px}
-.modal .card{max-width:420px;width:100%}
+.modal{position:fixed;inset:0;z-index:30;background:rgba(10,12,18,.55);display:flex;padding:max(12px,env(safe-area-inset-top,0px)) 12px max(12px,env(safe-area-inset-bottom,0px));overflow-y:auto;overscroll-behavior:contain}
+.modal[hidden]{display:none}
+.modal .card{max-width:420px;width:100%;margin:auto;max-height:calc(100dvh - 24px);display:flex;flex-direction:column;overflow:hidden}
+.modal .card>*{flex:none}
+.modal.avis .card{overflow-y:auto}
+.modal .card .replist,.modal .card .avisbody{flex:1 1 auto;min-height:0;overflow-y:auto}
+.modal .acts{flex-wrap:wrap}
 .modal .acts{display:flex;gap:10px;justify-content:flex-end}
 .grp{font-size:13px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--orange-ink);padding:14px 0 2px;border-top:1px solid var(--line)}
 .grp:first-child{border-top:0;padding-top:0}
 .grp+.check{border-top:0}
-.replist{display:flex;flex-direction:column;gap:8px;max-height:55vh;overflow:auto}
+.replist{display:flex;flex-direction:column;gap:8px}
 .rep{display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--bg)}
 .rep.cur{border-color:var(--orange)}
 .rep .open{flex:1;min-width:0;text-align:left;background:none;border:0;font:inherit;color:var(--fg);cursor:pointer;padding:0}
-.rep .open b{display:block;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.rep .open span{display:block;font-size:13px;color:var(--muted)}
+.rep .open b{display:block;font-weight:600;overflow-wrap:anywhere}
+.rep .open span{display:block;font-size:13px;color:var(--muted);overflow-wrap:anywhere}
+.rep .linkbtn{flex:none}
 .avis .chips .chip{font-size:16px;padding:12px 16px}
 .avis textarea{min-height:110px}
 .example{font-size:13px;color:var(--muted);text-align:center}
@@ -344,10 +350,10 @@ footer.bar .btn{flex:1}
 </div></div>
 <div class="toast" id="toast" hidden></div>
 <div class="modal" id="repModal" hidden><div class="card">
-  <b style="font-weight:600">Rapports sur ce téléphone</b>
-  <p class="hint">Chaque chantier garde son rapport. Touchez un rapport pour le reprendre.</p>
+  <b style="font-weight:600" id="repTitle">Rapports sur ce téléphone</b>
+  <p class="hint" id="repHint">Chaque chantier garde son rapport. Touchez un rapport pour le reprendre.</p>
   <div class="replist" id="repList"></div>
-  <div class="acts"><button class="btn" type="button" id="repClose">Fermer</button><button class="btn primary" type="button" id="repNew">+ Nouveau rapport</button></div>
+  <div class="acts"><button class="btn" type="button" id="repOld">Anciens rapports</button><button class="btn" type="button" id="repClose">Fermer</button><button class="btn primary" type="button" id="repNew">+ Nouveau rapport</button></div>
 </div></div>
 <div class="modal avis" id="avisModal" hidden><div class="card">
   <b style="font-weight:600;font-size:18px">Merci ! Votre avis sur notre intervention</b>
@@ -456,7 +462,7 @@ async function saveNow(){
   const a=repIndex().filter(x=>x.id!==S.id);a.unshift(indexEntry());setIndex(a);lsSet(CUR_KEY,S.id);
   if(S.f.poseur)lsSet(LS_POSEUR,S.f.poseur);
 }
-function persist(){clearTimeout(saveT);saveT=setTimeout(saveNow,400)}
+function persist(){S.rev=(S.rev||0)+1;clearTimeout(saveT);saveT=setTimeout(saveNow,400)}
 async function flush(){if(saveT){clearTimeout(saveT);saveT=null;await saveNow()}}
 function normalise(d){
   if(Array.isArray(d.checks)&&!d.cv){d.cv={};d.custom=[];d.checks.forEach(c=>{d.cv[c.t]={v:c.v,note:c.note||""};if(c.custom)d.custom.push(c.t)});delete d.checks}
@@ -484,9 +490,44 @@ function renderRepList(){const box=$("#repList");box.innerHTML="";const a=repInd
     const s=document.createElement("span");s.textContent=[x.mag,x.ville,x.deb&&frDate(x.deb)].filter(Boolean).join(" · ")+" — "+repStatus(x);
     o.append(b,s);o.onclick=()=>{$("#repModal").hidden=true;openReport(x.id)};
     const del=document.createElement("button");del.type="button";del.className="linkbtn";del.textContent="Supprimer";
-    del.onclick=()=>{$("#repModal").hidden=true;ask("Supprimer ce rapport ?","Le rapport de « "+(x.client||"client non renseigné")+" » et ses photos seront effacés de ce téléphone.",()=>deleteReport(x.id))};
+    del.onclick=()=>{$("#repModal").hidden=true;ask("Supprimer ce rapport ?",x.mailed?"Le rapport de « "+(x.client||"client")+" » sera effacé de ce téléphone. Il a déjà été envoyé : une copie reste sur le Drive et dans la boîte contact@renecuisines.fr.":"Attention : le rapport de « "+(x.client||"client non renseigné")+" » n'a pas été envoyé. Il existe uniquement sur ce téléphone : s'il est supprimé, il est perdu définitivement, avec ses photos et ses signatures.",()=>deleteReport(x.id))};
     d.append(o,del);box.appendChild(d)})}
-function showReports(){renderRepList();$("#repModal").hidden=false}
+const HINT_LOCAL="Chaque chantier garde son rapport. Touchez un rapport pour le reprendre.";
+function showReports(){$("#repTitle").textContent="Rapports sur ce téléphone";$("#repHint").textContent=HINT_LOCAL+(mailOn()?" Les rapports sont aussi sauvegardés sur le Drive dès qu'il y a du réseau.":"");
+  $("#repOld").hidden=!mailOn();$("#repNew").hidden=false;renderRepList();$("#repModal").hidden=false}
+/* ---------- sauvegarde Drive (même script que l'envoi des emails) ---------- */
+async function postScript(o){const r=await fetch(MAIL_ENDPOINT,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(o)});return r.json()}
+let bkT=null,bkBusy=false;
+function backupSoon(ms){clearTimeout(bkT);bkT=setTimeout(backupNow,ms==null?1500:ms)}
+async function backupNow(){
+  if(!mailOn()||bkBusy||(navigator.onLine===false))return;const cle=tx(lsGet(LS_CODE));if(!cle)return;
+  if((S.rev||0)===(S.bkRev||0))return;if(!tx(S.f.cNom)&&!S.ev)return;
+  bkBusy=true;const rev=S.rev||0,id=S.id;
+  try{const snap=Object.assign({},S,{bkRev:rev});
+    const j=await postScript({cle,action:"sauver",id,client:tx(S.f.cNom),mag:tx(S.f.mag),ville:tx(S.f.cVille),deb:S.f.dDeb||"",step:S.step||0,done:!!S.generated,mailed:S.mailed||"",poseur:tx(S.f.poseur),data:JSON.stringify(snap)});
+    if(j&&j.ok&&S.id===id){S.bkRev=rev;S.bkAt=Date.now();await saveNow()}}catch(e){}
+  bkBusy=false}
+async function showOld(){
+  let cle=tx(lsGet(LS_CODE));
+  if(!cle){cle=tx(window.prompt("Code équipe RENE CUISINES")||"");if(!cle)return;lsSet(LS_CODE,cle);$("#teamCode").value=cle}
+  const box=$("#repList"),msg=t=>{box.innerHTML="";const p=document.createElement("p");p.className="hint";p.textContent=t;box.appendChild(p)};
+  $("#repTitle").textContent="Anciens rapports";$("#repHint").textContent="Sauvegardés sur le Drive par toute l'équipe. Touchez un rapport pour le récupérer sur ce téléphone et le continuer.";
+  $("#repOld").hidden=true;$("#repNew").hidden=true;msg("Chargement…");
+  let j;try{j=await postScript({cle,action:"liste"})}catch(e){msg("Pas de réseau, ou script Google pas encore mis à jour. Réessayez plus tard.");return}
+  if(!j||!j.ok){msg(j&&j.err==="code"?"Code équipe incorrect. Corrigez-le à l'étape Signatures.":"Les anciens rapports ne sont pas disponibles : le script Google doit être mis à jour (version 4).");return}
+  if(!j.liste||!j.liste.length){msg("Aucun rapport sauvegardé pour l'instant.");return}
+  box.innerHTML="";j.liste.forEach(x=>{const d=document.createElement("div");d.className="rep"+(repIndex().some(l=>l.id===x.id)?" cur":"");
+    const o=document.createElement("button");o.type="button";o.className="open";
+    const b=document.createElement("b");b.textContent=x.client||"Client non renseigné";
+    const s=document.createElement("span");s.textContent=[x.mag,x.ville,x.deb&&frDate(x.deb)].filter(Boolean).join(" · ")+" — "+repStatus(x)+(x.poseur?" · "+x.poseur:"")+" · sauvegardé le "+new Date(x.upd).toLocaleDateString("fr-FR");
+    o.append(b,s);o.onclick=()=>recoverOld(cle,x);d.appendChild(o);box.appendChild(d)})}
+async function recoverOld(cle,x){
+  const doit=async()=>{toast("Récupération du rapport…");let j;try{j=await postScript({cle,action:"lire",id:x.id})}catch(e){toast("Pas de réseau. Réessayez.");return}
+    if(!j||!j.ok){toast("Rapport introuvable sur le Drive");return}
+    let s;try{s=normalise(JSON.parse(j.data))}catch(e){toast("Sauvegarde illisible");return}
+    await flush();$("#repModal").hidden=true;S=s;S.id=x.id;pdfBlob=null;mailStatus("","");$("#btnMail").hidden=true;await saveNow();renderAll();go(S.step===5&&!S.generated?4:S.step||0);toast("Rapport récupéré sur ce téléphone.")};
+  if(repIndex().some(l=>l.id===x.id)){$("#repModal").hidden=true;ask("Remplacer le rapport du téléphone ?","Ce rapport existe déjà sur ce téléphone. Le remplacer par la version sauvegardée sur le Drive le "+new Date(x.upd).toLocaleString("fr-FR")+" ?",doit)}
+  else doit()}
 function checkList(){const all=[];const push=(x,g)=>all.push([x,g]);
   PH_START.forEach(x=>push(x,"start"));PH_DURING.forEach(x=>push(x,"during"));
   S.types.forEach(t=>(CHECKS_BY_TYPE[t]||[]).forEach(x=>push(x,"tech")));
@@ -514,7 +555,7 @@ function go(i){
     if(!S.f.sClient){S.f.sClient=S.f.cNom||"";$("#sClient").value=S.f.sClient}
     requestAnimationFrame(()=>pads.forEach(p=>p.resize()))}
   if(i===5)renderDone();
-  window.scrollTo(0,0);persist();
+  window.scrollTo(0,0);persist();backupSoon();
 }
 function bindFields(){
   FIELDS.forEach(id=>{const el=document.getElementById(id);el.value=S.f[id]||"";
@@ -961,7 +1002,7 @@ async function sendMail(){
     const payload={cle:tx(lsGet(LS_CODE)),to,objet:objetTravaux(),magasin:tx(S.f.mag)==="Particulier"?"":tx(S.f.mag),guide,guideNom:guide?guideName():"",client:tx(S.f.cNom),num:S.num,date:frDate(S.f.dSign||today()),fichier:fileName(),reserves:nRes,signe:!S.absent&&pads[1].has(),poseur:tx(S.f.sPoseur||S.f.poseur),adresse:[tx(S.f.cAdr),tx(S.f.cVille)].filter(Boolean).join(", "),pdf};
     const r=await fetch(MAIL_ENDPOINT,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(payload)});
     const j=await r.json();
-    if(j.ok){S.mailed=to;persist();mailStatus("ok","Email envoyé à "+to+(guide?", avec le guide d'entretien":"")+". Copie au bureau et archive sur le Drive.");}
+    if(j.ok){S.mailed=to;persist();backupSoon(500);mailStatus("ok","Email envoyé à "+to+(guide?", avec le guide d'entretien":"")+". Copie au bureau et archive sur le Drive.");}
     else{mailStatus("bad",j.err==="code"?"Code équipe incorrect. Corrigez-le à l'étape Signatures puis réessayez.":"L'email n'est pas parti : "+(j.err||"erreur"));$("#btnMail").hidden=false}
   }catch(e){mailStatus("bad","L'email n'est pas parti (pas de réseau ?). Réessayez quand vous avez du réseau.");$("#btnMail").hidden=false}
 }
@@ -988,7 +1029,7 @@ function example(){
 function renderAll(){
   renderMag();
   $("#sEmail").value=S.f.cEmail||"";if(S.sendMail===undefined)S.sendMail=true;$("#sendMail").checked=!!S.sendMail;
-  $("#numLbl").textContent="N° "+S.num+" · v9";
+  $("#numLbl").textContent="N° "+S.num+" · v10";
   FIELDS.forEach(id=>{const el=document.getElementById(id);el.value=S.f[id]||""});
   $("#accept").checked=!!S.accept;$("#absent").checked=!!S.absent;$("#clientSign").hidden=!!S.absent;
   renderChips($("#types"),TYPES,true,()=>S.types,null,onTypes);onTypes();
@@ -1024,7 +1065,9 @@ async function init(){
   $("#btnGuide").onclick=saveGuide;
   $("#avisOk").onclick=()=>closeAvis(true);$("#avisSkip").onclick=()=>closeAvis(false);
   $("#repClose").onclick=()=>$("#repModal").hidden=true;$("#repNew").onclick=()=>{$("#repModal").hidden=true;newReport();toast("Nouveau rapport. Les autres restent enregistrés.")};
-  document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="hidden")flush()});
+  document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="hidden"){flush().then(()=>backupNow())}});
+  window.addEventListener("online",()=>backupSoon(3000));
+  $("#repOld").onclick=showOld;
   let bip=null;window.addEventListener("beforeinstallprompt",e=>{e.preventDefault();bip=e;$("#btnInstall").hidden=false});
   $("#btnInstall").onclick=async()=>{if(!bip)return;bip.prompt();try{await bip.userChoice}catch(e){}bip=null;$("#btnInstall").hidden=true};
   if("serviceWorker" in navigator&&location.protocol==="https:"&&!inClaudeHost()){navigator.serviceWorker.register("sw.js").catch(()=>{})}
